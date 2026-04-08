@@ -1,42 +1,135 @@
 package com.producto.producto.infrastructure.exception;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 
+import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    private static final Pattern DOUBLE_PATTERN = Pattern.compile("\"([^\"]+)\".*Double");
+    private static final Pattern INTEGER_PATTERN = Pattern.compile("\"([^\"]+)\".*Integer");
+
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<?> handleJsonError(HttpMessageNotReadableException ex) {
-
-        String mensaje = "Error en los datos enviados";
-        String sugerencia = "Verifica el formato de los campos";
-        String valor = "";
-
         String error = ex.getMessage();
+        String mensaje = "Error en el formato de los datos enviados";
+        String sugerencia = "Verifica el formato JSON de los campos";
+        String valor = "";
+        String campo = "";
 
         if (error.contains("Double")) {
-            mensaje = "El campo 'precio' tiene un valor inválido";
-            sugerencia = "Debe ser un número sin comillas, por ejemplo: 4000 o 4000.0";
+            Matcher matcher = DOUBLE_PATTERN.matcher(error);
+            if (matcher.find()) {
+                valor = matcher.group(1);
+                mensaje = "El campo 'precio' tiene un valor inválido";
+                sugerencia = "Debe ser un número sin comillas, por ejemplo: 4000 o 4000.0";
+                campo = "precio";
+            }
+        } else if (error.contains("Integer")) {
+            Matcher matcher = INTEGER_PATTERN.matcher(error);
+            if (matcher.find()) {
+                valor = matcher.group(1);
+                mensaje = "El campo 'stock' o 'productoId' tiene un valor inválido";
+                sugerencia = "Debe ser un número entero sin comillas, por ejemplo: 100";
+                campo = "stock/productoId";
+            }
+        } else if (error.contains("JSON parse error")) {
+            mensaje = "JSON mal formado";
+            sugerencia = "Verifica que el JSON esté bien estructurado";
+        }
 
-            // Intentar extraer el valor (simple)
-            if (error.contains("\"")) {
-                valor = error.split("\"")[1];
+        return ResponseEntity.badRequest().body(Map.of(
+                "timestamp", LocalDateTime.now(),
+                "status", HttpStatus.BAD_REQUEST.value(),
+                "error", "Bad Request",
+                "mensaje", mensaje,
+                "campo", campo,
+                "valor_recibido", valor,
+                "sugerencia", sugerencia
+        ));
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<?> handleValidationErrors(IllegalArgumentException ex) {
+        return ResponseEntity.badRequest().body(Map.of(
+                "timestamp", LocalDateTime.now(),
+                "status", HttpStatus.BAD_REQUEST.value(),
+                "error", "Validation Error",
+                "mensaje", ex.getMessage(),
+                "sugerencia", "Verifica los datos enviados"
+        ));
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<?> handleValidationExceptions(MethodArgumentNotValidException ex) {
+        StringBuilder errores = new StringBuilder();
+        ex.getBindingResult().getFieldErrors().forEach(error -> {
+            errores.append(error.getField()).append(": ").append(error.getDefaultMessage()).append("; ");
+        });
+
+        return ResponseEntity.badRequest().body(Map.of(
+                "timestamp", LocalDateTime.now(),
+                "status", HttpStatus.BAD_REQUEST.value(),
+                "error", "Validation Error",
+                "mensaje", "Errores de validación",
+                "detalles", errores.toString(),
+                "sugerencia", "Corrige los campos marcados"
+        ));
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<?> handleDatabaseErrors(DataIntegrityViolationException ex) {
+        String mensaje = "Error de integridad de datos";
+        String sugerencia = "Verifica las restricciones de la base de datos";
+
+        if (ex.getMessage() != null) {
+            if (ex.getMessage().contains("Duplicate entry")) {
+                mensaje = "Ya existe un producto con ese nombre";
+                sugerencia = "Usa un nombre diferente para el producto";
+            } else if (ex.getMessage().contains("cannot be null")) {
+                mensaje = "Campo obligatorio faltante";
+                sugerencia = "Asegúrate de enviar todos los campos requeridos";
             }
         }
 
-        return ResponseEntity.ok(
-                Map.of(
-                        "status", 400,
-                        "error", "Bad Request",
-                        "mensaje", mensaje,
-                        "valor_recibido", valor,
-                        "sugerencia", sugerencia
-                )
-        );
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                "timestamp", LocalDateTime.now(),
+                "status", HttpStatus.CONFLICT.value(),
+                "error", "Data Integrity Error",
+                "mensaje", mensaje,
+                "sugerencia", sugerencia
+        ));
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<?> handleMissingParameter(MissingServletRequestParameterException ex) {
+        return ResponseEntity.badRequest().body(Map.of(
+                "timestamp", LocalDateTime.now(),
+                "status", HttpStatus.BAD_REQUEST.value(),
+                "error", "Missing Parameter",
+                "mensaje", "Falta el parámetro requerido: " + ex.getParameterName(),
+                "sugerencia", "Agrega el parámetro " + ex.getParameterName() + " a la solicitud"
+        ));
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<?> handleGeneralErrors(Exception ex) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                "timestamp", LocalDateTime.now(),
+                "status", HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                "error", "Internal Server Error",
+                "mensaje", "Error interno del servidor",
+                "sugerencia", "Intenta más tarde o contacta al administrador"
+        ));
     }
 }

@@ -1,10 +1,8 @@
 package com.producto.producto.infrastructure.driver_adapters.jpa_repository;
 
-
 import com.producto.producto.domain.model.Producto;
 import com.producto.producto.domain.model.gateway.ProductoGateWay;
 import com.producto.producto.infrastructure.mapper.ProductoMapper;
-import com.producto.producto.infrastructure.driver_adapters.jpa_repository.ProductoData;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
