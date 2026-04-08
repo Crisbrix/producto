@@ -30,7 +30,7 @@ public class ProductoUseCase {
         if (producto.getDescripcion() != null && producto.getDescripcion().length() > 255) {
             throw new IllegalArgumentException("La descripción es demasiado larga");
         }
-        if (productoGateWay.buscarPorNombre(producto.getNombre()) != null) {
+        if (productoGateWay.validarProductoPorNombre(producto.getNombre()) != null) {
             throw new IllegalArgumentException("Ya existe un producto con ese nombre");
         }
 
@@ -59,9 +59,9 @@ public class ProductoUseCase {
         return productoGateWay.actualizarProducto(productoId, producto);
     }
 
-    public Producto buscarProductoPorNombre(String nombre) {
-        Producto producto = productoGateWay.buscarPorNombre(nombre);
-        if (productoGateWay.buscarPorNombre(producto.getNombre()) != null) {
+    public Producto validarProductoPorNombre(String nombre) {
+        Producto producto = productoGateWay.validarProductoPorNombre(nombre);
+        if (productoGateWay.validarProductoPorNombre(producto.getNombre()) != null) {
             throw new IllegalArgumentException("Ya existe un producto con ese nombre");
         }
         return producto;

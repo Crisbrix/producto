@@ -7,5 +7,5 @@ public interface ProductoGateWay{
     Producto buscarProductoPorId(Integer productoId);
     void eliminarProductoPorId(Integer productoId);
     Producto actualizarProducto(Integer productoId, Producto producto);
-    Producto buscarPorNombre(String nombre);
+    Producto validarProductoPorNombre(String nombre);
 }

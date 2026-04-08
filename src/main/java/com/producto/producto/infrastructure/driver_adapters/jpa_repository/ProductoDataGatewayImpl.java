@@ -47,7 +47,7 @@ public class ProductoDataGatewayImpl implements ProductoGateWay {
         return mapper.toProducto(actualizado);
     }
     @Override
-    public Producto buscarPorNombre(String nombre) {
+    public Producto validarProductoPorNombre(String nombre) {
         return repository.findByNombre(nombre)
                 .map(mapper::toProducto)
                 .orElse(null);
